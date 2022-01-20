@@ -19,6 +19,8 @@ def get_my_ticker() :
     
 def get_target_price(ticker) :
     df = pybithumb.get_ohlcv(ticker)
+    if len(df) < 6 :
+        return 100000000000
     yesterday = df.iloc[-2]
     today_open = yesterday['close']
     yesterday_high = yesterday['high']
@@ -31,16 +33,18 @@ def buy_crypto_currency(ticker, ratio) :
     orderbook = pybithumb.get_orderbook(ticker)
     sell_price = orderbook['asks'][0]['price']
     unit = (krw/ratio) / float(sell_price)
-    #bithumb.buy_market_order(ticker, unit)
+    bithumb.buy_market_order(ticker, unit)
     print("sucessed buy order")
 
 def sell_crypto_currency(ticker) :
     unit = bithumb.get_balance(ticker)[0]
-    #bithumb.sell_market_order(ticker, unit)
+    bithumb.sell_market_order(ticker, unit)
     print("sucessed sell order")
 
 def get_yesterday_ma5(ticker) :
     df = pybithumb.get_ohlcv(ticker)
+    if len(df) < 6 :
+        return 100000000000
     close = df['close']
     ma = close.rolling(window=5).mean()
     return ma[-2]
@@ -71,16 +75,13 @@ def select_ticker() :
 
 now = datetime.datetime.now()
 mid_night = datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1)
-#target_price = get_target_price('BTC')
-count = 0
 
-while count < 1 :
-    count = count + 1
+while True :
     try :
         pick_ticker, ratio = select_ticker()
         print(pick_ticker)
         for ticker,ratio in zip(pick_ticker, ratio) :
-            ratio = ratio+1
+            ratio = ratio + 1
             buy_crypto_currency(ticker,ratio)
         
         now = datetime.datetime.now()

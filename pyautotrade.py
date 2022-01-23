@@ -9,13 +9,13 @@ with open('bithumb_API_key.txt') as f :
     secret = lines[1].strip()
     bithumb = pybithumb.Bithumb(key, secret)
 
-def get_my_ticker() :
-    my_ticker = []
-    for ticker in pybithumb.get_tickers() :
-        if bithumb.get_balance(ticker)[0] != 0 :
-            my_ticker.append(ticker)
-        time.sleep(0.1)
-    return my_ticker
+#def get_my_ticker() :
+#    my_ticker = []
+#    for ticker in pybithumb.get_tickers() :
+#        if bithumb.get_balance(ticker)[0] != 0 :
+#            my_ticker.append(ticker)
+#        time.sleep(0.1)
+#    return my_ticker
     
 def get_target_price(ticker) :
     df = pybithumb.get_ohlcv(ticker)
@@ -29,7 +29,7 @@ def get_target_price(ticker) :
     return target
 
 def buy_crypto_currency(ticker, ratio) :
-    krw = bithumb.get_balance(ticker)[2]
+    krw = bithumb.get_balance(ticker)[2]*0.7
     orderbook = pybithumb.get_orderbook(ticker)
     sell_price = orderbook['asks'][0]['price']
     unit = (krw/ratio) / float(sell_price)
@@ -52,44 +52,49 @@ def get_yesterday_ma5(ticker) :
 def select_ticker() :
     interesting_ticker = []
     volume = []
+    my_ticker = []
     
     for ticker in pybithumb.get_tickers() :
+        amount = bithumb.get_balance(ticker)[0]
         current_price = pybithumb.get_current_price(ticker)
+        krw_ticker = amount * current_price
         target_price = get_target_price(ticker)
+        
+        if krw_ticker > 5000 :
+            my_ticker.append(ticker)
 
-        if (get_yesterday_ma5(ticker) < current_price) and (current_price > target_price) :
-            interesting_ticker.append(ticker)
-            volume.append(pybithumb.get_ohlcv(ticker).iloc[-1,-1])
+        if ticker not in my_ticker :
+            if (get_yesterday_ma5(ticker) < current_price) and (current_price > target_price) :
+                interesting_ticker.append(ticker)
+                volume.append(pybithumb.get_ohlcv(ticker).iloc[-1,-1])
 
-    buy_list = pd.DataFrame({'ticker': interesting_ticker,
-                               'volume' : volume})
+    buy_list = pd.DataFrame({'ticker': interesting_ticker, 'volume' : volume})
+    buy_list.sort_values('volume', ascending = False, inplace=True)
     print(buy_list)
 
     if len(buy_list) < 3 :
         pick_ticker = buy_list
         ratio = list(reversed(range(len(buy_list))))
     else :
-        pick_ticker = buy_list.sort_values('volume', ascending = False)[:3]
+        pick_ticker = buy_list[:3]
         ratio = [2,1,0]
-    return (pick_ticker.ticker, ratio)     
+    return (pick_ticker.ticker, ratio, my_ticker)
 
 now = datetime.datetime.now()
 mid_night = datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1)
 
 while True :
     try :
-        pick_ticker, ratio = select_ticker()
-        print(pick_ticker)
+        pick_ticker, ratio, my_ticker = select_ticker()
+       
         for ticker,ratio in zip(pick_ticker, ratio) :
             ratio = ratio + 1
             buy_crypto_currency(ticker,ratio)
         
         now = datetime.datetime.now()
         
-        if mid_night < now < mid_night + datetime.timedelta(seconds=10) :
+        if mid_night < now < mid_night + datetime.timedelta(seconds=150) :
             mid_night = datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1)
-            my_ticker = get_my_ticker()
-            print(my_ticker)
             for ticker in my_ticker :
                 sell_crypto_currency(ticker)
                 time.sleep(1)

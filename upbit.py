@@ -40,7 +40,7 @@ def get_target_price(ticker):
 def buy_crypto_currency(ticker, ratio) :
     krw = upbit.get_balance() * 0.1
     unit = krw/ratio
-    order = upbit.buy_market_order('KRW'+ticker, unit)
+    order = upbit.buy_market_order(ticker, unit)
     print(order)
     
 def sell_crypto_currency(ticker,buy_price,up,down) :
@@ -97,13 +97,13 @@ while True :
         for ticker,ratio in zip(pick_ticker, ratio) :
             ratio = ratio + 1
             buy_crypto_currency(ticker,ratio)
-            time_sleep(0.1)
+            time.sleep(0.1)
 
         my_ticker = get_my_ticker()
         print(my_ticker)
         for ticker in my_ticker :
             sell_crypto_currency(ticker.ticker, ticker.buy_price, up=1.1, down=0.97)
-            time_sleep(0.1)
+            time.sleep(0.1)
                         
     except Exception as e:
         print('error: ',e)

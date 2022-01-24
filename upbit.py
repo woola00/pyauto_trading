@@ -21,6 +21,16 @@ def get_my_ticker() :
     my_ticker = my_ticker.loc[my_ticker.buy_price != '0']
     return my_ticker
 
+def get_balance(ticker):
+    balances = upbit.get_balances()
+    for b in balances:
+        if b['currency'] == ticker:
+            if b['balance'] is not None:
+                return float(b['balance'])
+            else:
+                return 0
+    return 0
+
 def get_target_price(ticker):
     df = pyupbit.get_ohlcv(ticker, interval="day")
     if len(df) < 6 :
@@ -51,18 +61,18 @@ def select_ticekr() :
     return (pick_ticker.ticker, ratio) 
 
 def buy_crypto_currency(ticker, ratio) :
-    krw = upbit.get_balance()*0.8my
+    krw = upbit.get_balance()*0.8
     orderbook = pyupbit.get_orderbook(ticker)[0]
-    sell_price = orderbook["orderbook_units"][0]['ask_price']
-    unit = (krw/ratio) / float(sell_price)
-    order = pyupbit.buy_market_order(ticker, unit)
+    #sell_price = orderbook["orderbook_units"][0]['ask_price']
+    unit = krw/ratio) / float(sell_price)
+    order = pyupbit.buy_market_order('KRW'+ticker, unit)
     print(order)
     
 def sell_crypto_currency(ticker,buy_price,up,down) :
-    price = pyupbit.get_current_price(ticker)
+    price = pyupbit.get_current_price('KRW'+ticker)
     if (price > buy_price*up) & (price < buy_price*down) :    
         unit = upbit.get_balance(ticker)
-        order = pyupbit.sell_market_order(ticker, unit)
+        order = pyupbit.sell_market_order('KRW'+ticker, unit)
         print(order)
 
 def get_start_time(ticker):

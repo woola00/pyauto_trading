@@ -10,11 +10,15 @@ with open('upbit_API_key.txt') as f :
     upbit = pyupbit.Upbit(key, secret)
 
 def get_my_ticker() :
-    my_ticker =[]
+    ticker =[]
+    buy_price =[]
     balances = upbit.get_balances()
     for balance in balances[1:] :
-        ticker = balance['currency']
-        my_ticker.append("KRW-"+ticker)
+        ticker.append("KRW-"+ balance['currency'])
+        buy_price.append(balance['avg_buy_price'])
+
+    my_ticker = pd.DataFrame({'ticker':ticker,'buy_price':buy_price})
+    my_ticker = my_ticker.loc[my_ticker.buy_price != '0']
     return my_ticker
 
 def get_target_price(ticker):
@@ -26,7 +30,7 @@ def get_target_price(ticker):
 
 def select_ticekr() :    
     interesting_ticker =[]
-    volume =[]vi 
+    volume =[] 
     for ticker in pyupbit.get_tickers(fiat='KRW') :
         current_price = pyupbit.get_current_price(ticker)
         target_price = get_target_price(ticker)
@@ -47,18 +51,19 @@ def select_ticekr() :
     return (pick_ticker.ticker, ratio) 
 
 def buy_crypto_currency(ticker, ratio) :
-    krw = upbit.get_balance()
+    krw = upbit.get_balance()*0.8my
     orderbook = pyupbit.get_orderbook(ticker)[0]
     sell_price = orderbook["orderbook_units"][0]['ask_price']
     unit = (krw/ratio) / float(sell_price)
-    pyupbit.buy_market_order(ticker, unit)
-    print("successed buy order")
+    order = pyupbit.buy_market_order(ticker, unit)
+    print(order)
     
-def sell_crypto_currency(ticker) :
-    unit = upbit.get_balance(ticker)
-    pyupbit.sell_market_order(ticker, unit)
-    print('successed sell order')
-
+def sell_crypto_currency(ticker,buy_price,up,down) :
+    price = pyupbit.get_current_price(ticker)
+    if (price > buy_price*up) & (price < buy_price*down) :    
+        unit = upbit.get_balance(ticker)
+        order = pyupbit.sell_market_order(ticker, unit)
+        print(order)
 
 def get_start_time(ticker):
     df = pyupbit.get_ohlcv(ticker, interval="day", count=1)
@@ -71,16 +76,6 @@ def get_ma5(ticker):
         return 1000000000
     ma5 = df['close'].rolling(5).mean().iloc[-1]
     return ma5
-
-def get_balance(ticker):
-    balances = upbit.get_balances()
-    for b in balances:
-        if b['currency'] == ticker:
-            if b['balance'] is not None:
-                return float(b['balance'])
-            else:
-                return 0
-    return 0
 
 def get_current_price(ticker):
     return pyupbit.get_orderbook(ticker=ticker)["orderbook_units"][0]["ask_price"]
@@ -101,7 +96,7 @@ while True :
         my_ticker = get_my_ticker()
         print(my_ticker)
         for ticker in my_ticker :
-            sell_crypto_currency(ticker)
+            sell_crypto_currency(ticker.ticker, ticker.buy_price, up=1.1, down=0.97)
                         
     except Exception as e:
         print(e)

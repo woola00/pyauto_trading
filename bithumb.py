@@ -33,13 +33,13 @@ def buy_crypto_currency(ticker, ratio) :
     orderbook = pybithumb.get_orderbook(ticker)
     sell_price = orderbook['asks'][0]['price']
     unit = (krw/ratio) / float(sell_price)
-    bithumb.buy_market_order(ticker, unit)
-    print("sucessed buy order")
+    order = bithumb.buy_market_order(ticker, unit)
+    print(order)
 
 def sell_crypto_currency(ticker) :
     unit = bithumb.get_balance(ticker)[0]
-    bithumb.sell_market_order(ticker, unit)
-    print("sucessed sell order")
+    order = bithumb.sell_market_order(ticker, unit)
+    print(order)
 
 def get_yesterday_ma5(ticker) :
     df = pybithumb.get_ohlcv(ticker)

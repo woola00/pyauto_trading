@@ -10,15 +10,15 @@ with open('upbit_API_key.txt') as f :
     upbit = pyupbit.Upbit(key, secret)
 
 def get_my_ticker() :
-    excepted_ticker = ['CHL','BLACK','HORUS','ADD','MEETONE','BAY','RCN','SLS','IQ','ONIT']
+    excepted_ticker = ['CHL','BLACK','HORUS','ADD','USDT','MEETONE','BAY','RCN','SLS','IQ','ONIT']
     ticker = []
     buy_price = []
     balances = upbit.get_balances()
     for balance in balances[1:] :
         currency = balance['currency']
         if currency not in excepted_ticker :
-    ticker.append(currency)
-    buy_price.append(balance['avg_buy_price'])
+            ticker.append(currency)
+            buy_price.append(balance['avg_buy_price'])
 
     my_ticker = pd.DataFrame({'ticker':ticker,'price':buy_price})
     return my_ticker
@@ -47,7 +47,7 @@ def buy_crypto_currency(ticker, ratio) :
     
 def sell_crypto_currency(ticker,buy_price,up,down) :
     price = pyupbit.get_current_price(ticker)
-    if (price > buy_price*up) & (price < buy_price*down) :    
+    if (price > buy_price*up) | (price < buy_price*down) :    
         unit = upbit.get_balance(ticker)
         order = upbit.sell_market_order(ticker, unit)
         print('##result:\n",order)
@@ -84,12 +84,13 @@ def select_ticker() :
     else :
         pick_ticker = buy_list.sort_values('volume', ascending = False)[:3]
         ratio = [2,1,0]
-    return (pick_ticker.ticker, ratio) 
+    return (pick_ticker.ticker, ratio)
 
 
 while True :
     try :
         now = datetime.datetime.now()
+        print(now)        
         start_time = get_start_time("KRW-BTC")
         end_time = start_time + datetime.timedelta(days=1)
         
@@ -97,14 +98,15 @@ while True :
         pick_ticker, ratio = select_ticker()
         my_ticker = get_my_ticker()
         print('pick_ticker : \n',pick_ticker)
-        print('my_ticker : \n',my_ticker)        
+               
         for ticker,ratio in zip(pick_ticker, ratio) :
             ratio = ratio + 1
             if ticker not in list(my_ticker.ticker) :
                 buy_crypto_currency(ticker,ratio)
                 time.sleep(0.1)
-        
-        for ticker, buy_price in zip(my_ticker.ticker, my_ticker.buy_price) :
+        print('my_ticker : \n',my_ticker)
+        buy_price = my_ticker.buy_price.astype(float)
+        for ticker, buy_price in zip(my_ticker.ticker, buy_price) :
             sell_crypto_currency(ticker, buy_price, up=1.1, down=0.97)
             time.sleep(0.1)
                         

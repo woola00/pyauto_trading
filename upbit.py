@@ -13,24 +13,28 @@ def get_my_ticker() :
     excepted_ticker = ['CHL','BLACK','HORUS','ADD','USDT','MEETONE','BAY','RCN','SLS','IQ','ONIT']
     ticker = []
     buy_price = []
+    unit = []
     balances = upbit.get_balances()
     for balance in balances[1:] :
         currency = balance['currency']
         if currency not in excepted_ticker :
             ticker.append('KRW-'+currency)
             buy_price.append(balance['avg_buy_price'])
+            unit.append(balance['balance'])
 
-    my_ticker = pd.DataFrame({'ticker':ticker,'buy_price':buy_price})
+    my_ticker = pd.DataFrame({'ticker':ticker,
+                              'buy_price':buy_price,
+                              'balance':unit})
     return my_ticker
 
-#def get_balance(ticker):
-#    balances = upbit.get_balances()
-#    for b in balances:
-#        if b['currency'] == ticker:
-#            if b['balance'] is not None:
-#                return float(b['balance'])
-#            else: return 0
-#    return 0
+def get_balance(ticker):
+    balances = upbit.get_balances()
+    for b in balances:
+        if b['currency'] == ticker:
+            if b['balance'] is not None:
+                return float(b['balance'])
+            else: return 0
+    return 0
 
 def get_target_price(ticker):
     df = pyupbit.get_ohlcv(ticker, interval="day")
@@ -85,8 +89,7 @@ def select_ticker() :
         pick_ticker = buy_list.sort_values('volume', ascending = False)[:3]
         ratio = [2,1,0]
     return (pick_ticker.ticker, ratio)
-
-
+    
 while True :
     try :
         now = datetime.datetime.now()
@@ -106,10 +109,13 @@ while True :
                 time.sleep(0.1)
         print('my_ticker : \n',my_ticker)
         buy_price = my_ticker.buy_price.astype(float)
-        for ticker, buy_price in zip(my_ticker.ticker, buy_price) :
-            sell_crypto_currency(ticker, buy_price, up=1.1, down=0.97)
-            time.sleep(0.1)
-                        
+        balance = my_ticker.balance.astype(float)
+        for ticker, buy_price,balance in zip(my_ticker.ticker, buy_price, balance) :
+            if balance > 0 :
+                print('Trying sell ticker :', ticker)
+                sell_crypto_currency(ticker, buy_price, up=1.1, down=0.97)
+                time.sleep(0.1)
+
     except Exception as e:
         print('error: ',e)
         time.sleep(1)        

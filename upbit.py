@@ -44,10 +44,10 @@ def buy_crypto_currency(ticker, ratio) :
     print(order)
     
 def sell_crypto_currency(ticker,buy_price,up,down) :
-    price = pyupbit.get_current_price('KRW'+ticker)
+    price = pyupbit.get_current_price('KRW-'+ticker)
     if (price > buy_price*up) & (price < buy_price*down) :    
         unit = upbit.get_balance(ticker)
-        order = upbit.sell_market_order('KRW'+ticker, unit)
+        order = upbit.sell_market_order('KRW-'+ticker, unit)
         print(order)
 
 def get_start_time(ticker):
@@ -98,7 +98,7 @@ while True :
         print('my_picker : ',my_ticker)        
         for ticker,ratio in zip(pick_ticker, ratio) :
             ratio = ratio + 1
-            if ticker not in my_ticker :
+            if ticker not in ['KRW-'+a for a in my_ti :
                 buy_crypto_currency(ticker,ratio)
                 time.sleep(0.1)
 

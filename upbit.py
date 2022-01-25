@@ -10,25 +10,27 @@ with open('upbit_API_key.txt') as f :
     upbit = pyupbit.Upbit(key, secret)
 
 def get_my_ticker() :
-    ticker =[]
-    buy_price =[]
+    excepted_ticker = ['CHL','BLACK','HORUS','ADD','MEETONE','BAY','RCN','SLS','IQ','ONIT']
+    ticker = []
+    buy_price = []
     balances = upbit.get_balances()
     for balance in balances[1:] :
-        ticker.append(balance['currency'])
-        buy_price.append(balance['avg_buy_price'])
+        currency = balance['currency']
+        if currency not in excepted_ticker :
+    ticker.append(currency)
+    buy_price.append(balance['avg_buy_price'])
 
-    my_ticker = pd.DataFrame({'ticker':ticker,'buy_price':buy_price})
-    my_ticker = my_ticker.loc[(my_ticker.buy_price != '0')]
+    my_ticker = pd.DataFrame({'ticker':ticker,'price':buy_price})
     return my_ticker
 
-def get_balance(ticker):
-    balances = upbit.get_balances()
-    for b in balances:
-        if b['currency'] == ticker:
-            if b['balance'] is not None:
-                return float(b['balance'])
-            else: return 0
-    return 0
+#def get_balance(ticker):
+#    balances = upbit.get_balances()
+#    for b in balances:
+#        if b['currency'] == ticker:
+#            if b['balance'] is not None:
+#                return float(b['balance'])
+#            else: return 0
+#    return 0
 
 def get_target_price(ticker):
     df = pyupbit.get_ohlcv(ticker, interval="day")
@@ -38,17 +40,17 @@ def get_target_price(ticker):
     return target_price
 
 def buy_crypto_currency(ticker, ratio) :
-    krw = upbit.get_balance() * 0.1
+    krw = upbit.get_balance('KRW') * 0.1
     unit = krw/ratio
     order = upbit.buy_market_order(ticker, unit)
-    print(order)
+    print('##result:\n",order)
     
 def sell_crypto_currency(ticker,buy_price,up,down) :
-    price = pyupbit.get_current_price('KRW-'+ticker)
+    price = pyupbit.get_current_price(ticker)
     if (price > buy_price*up) & (price < buy_price*down) :    
         unit = upbit.get_balance(ticker)
-        order = upbit.sell_market_order('KRW-'+ticker, unit)
-        print(order)
+        order = upbit.sell_market_order(ticker, unit)
+        print('##result:\n",order)
 
 def get_start_time(ticker):
     df = pyupbit.get_ohlcv(ticker, interval="day", count=1)
@@ -94,18 +96,16 @@ while True :
         #if start_time < now < end_time - datetime.timedelta(seconds=10) :
         pick_ticker, ratio = select_ticker()
         my_ticker = get_my_ticker()
-        print('pick_ticker : ',pick_ticker)
-        print('my_picker : ',my_ticker)        
+        print('pick_ticker : \n',pick_ticker)
+        print('my_ticker : \n',my_ticker)        
         for ticker,ratio in zip(pick_ticker, ratio) :
             ratio = ratio + 1
-            if ticker not in ['KRW-'+a for a in my_ti :
+            if ticker not in list(my_ticker.ticker) :
                 buy_crypto_currency(ticker,ratio)
                 time.sleep(0.1)
-
         
-        
-        for ticker in my_ticker :
-            sell_crypto_currency(ticker.ticker, ticker.buy_price, up=1.1, down=0.97)
+        for ticker, buy_price in zip(my_ticker.ticker, my_ticker.buy_price) :
+            sell_crypto_currency(ticker, buy_price, up=1.1, down=0.97)
             time.sleep(0.1)
                         
     except Exception as e:

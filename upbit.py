@@ -68,7 +68,7 @@ def select_ticker() :
     for ticker in pyupbit.get_tickers(fiat='KRW') :
         pre_p = pyupbit.get_current_price(ticker)
         tg_p = get_target_price(ticker)
-
+        
         if (pre_p > get_ma5(ticker)) and (pre_p > tg_p) :
             interesting_ticker.append(ticker)
             volume.append(pyupbit.get_ohlcv(ticker).iloc[-1,-2])
@@ -93,14 +93,17 @@ while True :
         
         #if start_time < now < end_time - datetime.timedelta(seconds=10) :
         pick_ticker, ratio = select_ticker()
-        print(pick_ticker)
+        my_ticker = get_my_ticker()
+        print('pick_ticker : ',pick_ticker)
+        print('my_picker : ',my_ticker)        
         for ticker,ratio in zip(pick_ticker, ratio) :
             ratio = ratio + 1
-            buy_crypto_currency(ticker,ratio)
-            time.sleep(0.1)
+            if ticker not in my_ticker :
+                buy_crypto_currency(ticker,ratio)
+                time.sleep(0.1)
 
-        my_ticker = get_my_ticker()
-        print(my_ticker)
+        
+        
         for ticker in my_ticker :
             sell_crypto_currency(ticker.ticker, ticker.buy_price, up=1.1, down=0.97)
             time.sleep(0.1)

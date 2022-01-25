@@ -17,7 +17,7 @@ def get_my_ticker() :
     for balance in balances[1:] :
         currency = balance['currency']
         if currency not in excepted_ticker :
-            ticker.append(currency)
+            ticker.append('KRW-'+currency)
             buy_price.append(balance['avg_buy_price'])
 
     my_ticker = pd.DataFrame({'ticker':ticker,'buy_price':buy_price})

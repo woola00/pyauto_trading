@@ -20,7 +20,7 @@ def get_my_ticker() :
             ticker.append(currency)
             buy_price.append(balance['avg_buy_price'])
 
-    my_ticker = pd.DataFrame({'ticker':ticker,'price':buy_price})
+    my_ticker = pd.DataFrame({'ticker':ticker,'buy_price':buy_price})
     return my_ticker
 
 #def get_balance(ticker):
@@ -43,14 +43,14 @@ def buy_crypto_currency(ticker, ratio) :
     krw = upbit.get_balance('KRW') * 0.1
     unit = krw/ratio
     order = upbit.buy_market_order(ticker, unit)
-    print('##result:\n",order)
+    print('##result:\n',order)
     
 def sell_crypto_currency(ticker,buy_price,up,down) :
     price = pyupbit.get_current_price(ticker)
     if (price > buy_price*up) | (price < buy_price*down) :    
         unit = upbit.get_balance(ticker)
         order = upbit.sell_market_order(ticker, unit)
-        print('##result:\n",order)
+        print('##result:\n',order)
 
 def get_start_time(ticker):
     df = pyupbit.get_ohlcv(ticker, interval="day", count=1)
@@ -96,9 +96,9 @@ while True :
         
         #if start_time < now < end_time - datetime.timedelta(seconds=10) :
         pick_ticker, ratio = select_ticker()
-        my_ticker = get_my_ticker()
         print('pick_ticker : \n',pick_ticker)
-               
+        my_ticker = get_my_ticker()
+              
         for ticker,ratio in zip(pick_ticker, ratio) :
             ratio = ratio + 1
             if ticker not in list(my_ticker.ticker) :

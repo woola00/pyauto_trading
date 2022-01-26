@@ -14,6 +14,7 @@ def get_my_ticker() :
     ticker = []
     buy_price = []
     unit = []
+    current_price = []
     balances = upbit.get_balances()
     for balance in balances[1:] :
         currency = balance['currency']
@@ -21,10 +22,13 @@ def get_my_ticker() :
             ticker.append('KRW-'+currency)
             buy_price.append(balance['avg_buy_price'])
             unit.append(balance['balance'])
+            current_price.append(pyupbit.get_current_price('KRW-'+currency))
 
     my_ticker = pd.DataFrame({'ticker':ticker,
                               'buy_price':buy_price,
-                              'balance':unit})
+                              'balance':unit,
+                              'current_price':current_price })
+    my_ticker['krw_balance'] = my_ticker.current_price.astype(float) * my_ticker.balance.astype(float)
     return my_ticker
 
 def get_balance(ticker):
@@ -40,7 +44,14 @@ def get_target_price(ticker):
     df = pyupbit.get_ohlcv(ticker, interval="day")
     if len(df) < 6 :
         return 1000000000
-    target_price = df.iloc[-2]['close'] + (df.iloc[-2]['high'] - df.iloc[-2]['low'])*0.5
+    target_price = df.iloc[-2]['close'] + abs(df.iloc[-2]['close'] - df.iloc[-2]['open'])*0.5
+    return target_price
+
+def get_sell_tg_price(ticker):
+    df = pyupbit.get_ohlcv(ticker, interval="day")
+    if len(df) < 6 :
+        return 1000000000
+    target_price = df.iloc[-2]['close'] - abs(df.iloc[-2]['close'] - df.iloc[-2]['open'])*0.3
     return target_price
 
 def buy_crypto_currency(ticker, ratio) :
@@ -51,7 +62,7 @@ def buy_crypto_currency(ticker, ratio) :
     
 def sell_crypto_currency(ticker,buy_price,up,down) :
     price = pyupbit.get_current_price(ticker)
-    if (price > buy_price*up) | (price < buy_price*down) :    
+    if (price > buy_price*up) | (price < get_sell_tg_price(ticker)) :    
         unit = upbit.get_balance(ticker)
         order = upbit.sell_market_order(ticker, unit)
         print('##result:\n',order)
@@ -101,7 +112,7 @@ while True :
         pick_ticker, ratio = select_ticker()
         print('pick_ticker : \n',pick_ticker)
         my_ticker = get_my_ticker()
-              
+        my_ticker = my_ticker.loc[my_ticker.krw_balance > 5000]      
         for ticker,ratio in zip(pick_ticker, ratio) :
             ratio = ratio + 1
             if ticker not in list(my_ticker.ticker) :

@@ -143,7 +143,7 @@ while True :
             print('pick_ticker : \n',pick_ticker) 
             for ticker,ratio in zip(pick_ticker, ratio) :
                 ratio = ratio + 1
-                krw = upbit.get_balance('KRW')/ratio
+                krw = upbit.get_balance('KRW')
                 if (krw > 1000000) & (ticker not in today_buy_list) :
                     buy_crypto_currency(ticker,krw)
                     today_buy_list.append(ticker)

@@ -54,23 +54,29 @@ def get_sell_tg_price(ticker):
     target_price = df.iloc[-2]['close']# - abs(df.iloc[-2]['close'] - df.iloc[-2]['open'])*0.3
     return target_price
 
-def buy_crypto_currency(ticker, ratio) :
-    krw = upbit.get_balance('KRW')
-    if krw > 4000000 : unit = krw * 0.2
+def buy_crypto_currency(ticker, krw) :
+    if krw > 4000000 : unit = krw*0.2
     elif krw > 3000000 : unit = krw * 0.3
     elif krw > 2000000 : unit = krw * 0.4
     elif krw > 1000000 : unit = krw * 0.5
-    else : unit = krw
+    else : unit = krw * 0.9
+    print(krw,ticker,unit)
     order = upbit.buy_market_order(ticker, unit)
     print('##result:\n',order)
     
 def sell_crypto_currency(ticker,buy_price,up,down) :
     price = pyupbit.get_current_price(ticker)
-    if (price > buy_price*up) | (price < get_sell_tg_price(ticker)) :    
+    if (price > buy_price*up)|(price < buy_price*down)|(price < get_sell_tg_price(ticker)) :    
         print('Trying sell ticker :', ticker)
         unit = upbit.get_balance(ticker)
         order = upbit.sell_market_order(ticker, unit)
         print('##result:\n',order)
+        
+def all_sell_crypto(ticker) :
+    print('Trying sell ticker :', ticker)
+    unit = upbit.get_balance(ticker)
+    order = upbit.sell_market_order(ticker, unit)
+    print('##result:\n',order)
 
 def get_start_time(ticker):
     df = pyupbit.get_ohlcv(ticker, interval="day", count=1)
@@ -95,7 +101,7 @@ def time_ratio() :
 def get_tg_volume(ticker) :
     volume = pyupbit.get_ohlcv(ticker).iloc[:,-2] 
     now_volume = volume[-1]*time_ratio()
-    tg_volume = volume[-2] * 1.5
+    tg_volume = volume[-2] * 2
     return now_volume, tg_volume
 
 def select_ticker() :
@@ -103,17 +109,15 @@ def select_ticker() :
     value =[] 
     my_ticker = get_my_ticker()
     my_ticker = my_ticker.loc[my_ticker.krw_balance > 5000]
-   
     for ticker in pyupbit.get_tickers(fiat='KRW') :
         cur_p = pyupbit.get_current_price(ticker)
         tg_p = get_target_price(ticker)
         now_vol, tg_vol = get_tg_volume(ticker)
-        time.sleep(0.1)
-        
         if ticker not in list(my_ticker.ticker) :
             if (cur_p > get_ma5(ticker)) and (cur_p > tg_p) and (now_vol > tg_vol) :
                 interesting_ticker.append(ticker)
                 value.append(pyupbit.get_ohlcv(ticker).iloc[-1,-1])
+                time.sleep(0.1)
     buy_list = pd.DataFrame({'ticker':interesting_ticker,
                              'volume':value})
     print('buy_list')
@@ -126,6 +130,7 @@ def select_ticker() :
     
     return (pick_ticker.ticker, ratio, my_ticker)
 
+today_buy_list = []
 while True :
     try :
         now = datetime.datetime.now()
@@ -133,27 +138,33 @@ while True :
         start_time = get_start_time("KRW-BTC")
         end_time = start_time + datetime.timedelta(days=1)
         
-        if start_time < now < end_time - datetime.timedelta(seconds=10) :
+        if start_time < now < end_time - datetime.timedelta(seconds=450) :
             pick_ticker, ratio, my_ticker = select_ticker()
-            print('pick_ticker : \n',pick_ticker)     
+            print('pick_ticker : \n',pick_ticker) 
             for ticker,ratio in zip(pick_ticker, ratio) :
                 ratio = ratio + 1
-                if upbit.get_balance('KRW') > 500000:
-                    buy_crypto_currency(ticker,ratio)
+                krw = upbit.get_balance('KRW')/ratio
+                if (krw > 1000000) & (ticker not in today_buy_list) :
+                    buy_crypto_currency(ticker,krw)
+                    today_buy_list.append(ticker)
+                    print(today_buy_list)
                     time.sleep(0.1)
             print('Buy Complete :',datetime.datetime.now())
-        else :
             buy_price = my_ticker.buy_price.astype(float)
             balance = my_ticker.balance.astype(float)
             for ticker, buy_price,balance in zip(my_ticker.ticker, buy_price, balance) :
-                if balance > 0 :
-                    #print('Trying sell ticker :', ticker)
-                    sell_crypto_currency(ticker, buy_price, up=1.1, down=0.97)
+                print(ticker)
+                if balance > 0 :                    
+                    sell_crypto_currency(ticker, buy_price, up=1.05, down=0.98)
                     time.sleep(0.1)
-        
-        print('Sell Complete :',datetime.datetime.now())
+        else :
+            for ticker in my_ticker.ticker :
+                balance = my_ticker.balance.astype(float)
+                if balance > 0 :
+                    all_sell_crypto(ticker)
+                    time.sleep(0.1)
+            today_buy_list = []
     except Exception as e:
         print('error: ',e)
-        time.sleep(1)        
-  
+        time.sleep(1)          
     

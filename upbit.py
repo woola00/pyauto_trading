@@ -29,6 +29,7 @@ def get_my_ticker() :
                               'balance':unit,
                               'current_price':current_price })
     my_ticker['krw_balance'] = my_ticker.current_price.astype(float) * my_ticker.balance.astype(float)
+    my_ticker = my_ticker.loc[my_ticker.krw_balance > 5000]
     return my_ticker
 
 def get_balance(ticker):
@@ -55,29 +56,33 @@ def get_sell_tg_price(ticker):
     return target_price
 
 def buy_crypto_currency(ticker, krw) :
-    if krw > 4000000 : unit = krw*0.2
-    elif krw > 3000000 : unit = krw * 0.3
-    elif krw > 2000000 : unit = krw * 0.4
-    elif krw > 1000000 : unit = krw * 0.5
+    if krw > 4000000 : unit = krw*0.06
+    elif krw > 3000000 : unit = krw * 0.08
+    elif krw > 2000000 : unit = krw * 0.09
+    elif krw > 1000000 : unit = krw * 0.2
     else : unit = krw * 0.9
-    print(krw,ticker,unit)
     order = upbit.buy_market_order(ticker, unit)
     print('##result:\n',order)
     
-def sell_crypto_currency(ticker,buy_price,up,down) :
-    price = pyupbit.get_current_price(ticker)
-    if (price > buy_price*up)|(price < buy_price*down)|(price < get_sell_tg_price(ticker)) :    
-        print('Trying sell ticker :', ticker)
+def sensing_crypto(up,down) :
+    my_ticker = get_my_ticker()
+    buy_price = my_ticker.buy_price.astype(float)
+    for ticker, buy_price in zip(my_ticker.ticker,buy_price):
+        price = pyupbit.get_current_price(ticker)
+        if (price > buy_price*up)|(price < buy_price*down) :    
+            unit = upbit.get_balance(ticker)
+            print('Trying sell ticker :', ticker)
+            order = upbit.sell_market_order(ticker, unit)
+            print('##result:\n',order)
+        time.sleep(0.1)
+
+def all_crypto_sell(ticker) :
+    my_ticker = get_my_ticker()
+    for ticker in my_ticker.ticker :
         unit = upbit.get_balance(ticker)
         order = upbit.sell_market_order(ticker, unit)
-        print('##result:\n',order)
-        
-def all_sell_crypto(ticker) :
-    print('Trying sell ticker :', ticker)
-    unit = upbit.get_balance(ticker)
-    order = upbit.sell_market_order(ticker, unit)
-    print('##result:\n',order)
-
+        time.sleep(0.1)
+    
 def get_start_time(ticker):
     df = pyupbit.get_ohlcv(ticker, interval="day", count=1)
     start_time = df.index[0]
@@ -108,7 +113,6 @@ def select_ticker() :
     interesting_ticker =[]
     value =[] 
     my_ticker = get_my_ticker()
-    my_ticker = my_ticker.loc[my_ticker.krw_balance > 5000]
     for ticker in pyupbit.get_tickers(fiat='KRW') :
         cur_p = pyupbit.get_current_price(ticker)
         tg_p = get_target_price(ticker)
@@ -120,51 +124,43 @@ def select_ticker() :
                 time.sleep(0.1)
     buy_list = pd.DataFrame({'ticker':interesting_ticker,
                              'volume':value})
-    print('buy_list')
-    if len(buy_list) < 3 :
-        pick_ticker = buy_list
-        ratio = list(reversed(range(len(buy_list))))
-    else :
-        pick_ticker = buy_list.sort_values('volume', ascending = False)[:3]
-        ratio = [2,1,0]
+    
+    pick_ticker = buy_list.sort_values('volume', ascending = False)
+    ratio = list(reversed(range(len(pick_ticker))))
     
     return (pick_ticker.ticker, ratio, my_ticker)
 
-today_buy_list = []
+today_buy_list = ['KRW-THETA','KRW-ENJ','KRW-CRE','KRW-LSK','KRW-MTL','KRW-STX','KRW-FLOW','KRW-GAS','KRW-TON',
+                  'KRW-SBD','KRW-MANA','KRW-CBK','KRW-MFT','KRW-SAND','KRW-XRP','KRW-STRAX','KRW-AXS']
 while True :
     try :
         now = datetime.datetime.now()
         print('STRAT :',now)        
         start_time = get_start_time("KRW-BTC")
         end_time = start_time + datetime.timedelta(days=1)
-        
+        krw = upbit.get_balance('KRW')
         if start_time < now < end_time - datetime.timedelta(seconds=450) :
-            pick_ticker, ratio, my_ticker = select_ticker()
-            print('pick_ticker : \n',pick_ticker) 
-            for ticker,ratio in zip(pick_ticker, ratio) :
-                ratio = ratio + 1
-                krw = upbit.get_balance('KRW')
-                if (krw > 1000000) & (ticker not in today_buy_list) :
-                    buy_crypto_currency(ticker,krw)
-                    today_buy_list.append(ticker)
-                    print(today_buy_list)
-                    time.sleep(0.1)
-            print('Buy Complete :',datetime.datetime.now())
-            buy_price = my_ticker.buy_price.astype(float)
-            balance = my_ticker.balance.astype(float)
-            for ticker, buy_price,balance in zip(my_ticker.ticker, buy_price, balance) :
-                print(ticker)
-                if balance > 0 :                    
-                    sell_crypto_currency(ticker, buy_price, up=1.05, down=0.98)
-                    time.sleep(0.1)
+            if krw > 1000000 :
+                pick_ticker, ratio, my_ticker = select_ticker()
+                print('pick_ticker : \n',pick_ticker) 
+                for ticker,ratio in zip(pick_ticker, ratio) :
+                    ratio = ratio + 1
+                    krw = upbit.get_balance('KRW')
+                    if ticker not in today_buy_list :
+                        buy_crypto_currency(ticker,krw)
+                        today_buy_list.append(ticker)
+                        time.sleep(0.1)
+                    print('Buy Complete :',datetime.datetime.now())
+                    print('today buy :', today_buy_list)
+                sensing_crypto(up=1.2, down=0.9)
+                print('sensing complete :', datetime.datetime.now())
+            else :
+                sensing_crypto(up=1.2, down=0.9)
+                print('sensing complete :', datetime.datetime.now())
         else :
-            for ticker in my_ticker.ticker :
-                balance = my_ticker.balance.astype(float)
-                if balance > 0 :
-                    all_sell_crypto(ticker)
-                    time.sleep(0.1)
+            all_cryto_sell()
             today_buy_list = []
+            
     except Exception as e:
         print('error: ',e)
-        time.sleep(1)          
-    
+        time.sleep(1)            
